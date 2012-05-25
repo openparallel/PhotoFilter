@@ -1,32 +1,52 @@
 package org.openparallel.photofilter;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+
 import org.openparallel.photofilter.R;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Bitmap.Config;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.provider.MediaStore.Images.Media;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.ImageView;
 
 public class PhotoFilterActivity extends Activity {
-    /** Called when the activity is first created. */
-	
-	static {
-        System.loadLibrary("libjni_mosaic");
-        System.loadLibrary("opencv");
-    }
+	/** Called when the activity is first created. */
 
-final int PICTURE_ACTIVITY = 1; // This is only really needed if you are catching the results of more than one activity.  It'll make sense later.
-	
-    /* Override the onCreate method */
-    @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState); // Blah blah blah call the super.
-        setContentView(R.layout.main); // It is VERY important that you do this FIRST.  If you don't, the next line will throw a null pointer exception.  And God will kill a kitten.
+	static {
+		//System.loadLibrary("libjni_mosaic");
+		//System.loadLibrary("opencv");
+	}
+
+	final int PICTURE_ACTIVITY = 1000; // This is only really needed if you are catching the results of more than one activity.  It'll make sense later.
+
+	private ImageView imageView;
+
+	/* Override the onCreate method */
+	@Override
+	public void onCreate(Bundle savedInstanceState)
+	{
+		super.onCreate(savedInstanceState); // Blah blah blah call the super.
+		setContentView(R.layout.main); // It is VERY important that you do this FIRST.  If you don't, the next line will throw a null pointer exception.  And God will kill a kitten.
+
 		final Button cameraButton = (Button)findViewById(R.id.camera_button); // Get a handle to the button so we can add a handler for the click event 
 		cameraButton.setOnClickListener(new OnClickListener() {
 			@Override
@@ -35,42 +55,118 @@ final int PICTURE_ACTIVITY = 1; // This is only really needed if you are catchin
 				startActivityForResult(cameraIntent, PICTURE_ACTIVITY); // This will cause the onActivityResult event to fire once it's done
 			}
 		});
-		
-    }
+
+	}
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		super.onActivityResult(requestCode, resultCode, intent);
-		
-		AlertDialog msgDialog;
-		if (resultCode == RESULT_CANCELED) { // The user didn't like the photo.  ;_;
-				msgDialog = createAlertDialog("Q_Q", "Kitty wouldn't sit still, eh?  It's ok - you can try again!", "OK!  I'LL TRY AGAIN!");
 
-		} else {
-			/*
+		AlertDialog msgDialog;
+
+		/*
 			This is where you would trap the requestCode (in this case PICTURE_ACTIVITY).  Seeing as how this is the ONLY 
 			Activity that we are calling from THIS activity, it's kind of a moot point.  If you had more than one activity that
 			you were calling for results, you would need to throw a switch statement in here or a bunch of if-then-else
 			constructs.  Whatever floats your boat.
-			*/
-			msgDialog = createAlertDialog("ZOMG!", "YOU TOOK A PICTURE!  WITH YOUR PHONE! HOLY CRAP!", "I KNOW RITE??!?");
-			
-			/*
+		 */
+
+		if (requestCode == PICTURE_ACTIVITY) { 
+			if(resultCode == RESULT_OK){
+
+				
+					
+					//initialise the imageview
+					this.imageView = (ImageView)this.findViewById(R.id.imageView1);
+
+					//load the image from camera and set it as the imageview
+					try{
+					if(intent != null){
+						Bitmap photo = Media.getBitmap(this.getContentResolver(), intent.getData());	
+						//Bitmap photo =  (Bitmap) getIntent().getExtras().get("data");
+						imageView.setImageBitmap(photo);
+						//photo.recycle();
+					}
+					else{
+						msgDialog = createAlertDialog(":(", "Bummer... the AVD or current device doesn't support camera capture", "OK!");
+					}
+						
+					}catch (Exception e) {
+						e.printStackTrace();
+						// TODO: handle exception
+					}
+				
+			}
+
+			if (resultCode == RESULT_CANCELED) { // The user didn't like the photo.  ;_;
+				msgDialog = createAlertDialog(":)", "You hit the cancel button... why not try again later!", "OK!");
+			}
+
+//			else{
+//				finish();
+//				try {
+//
+//				} catch (Exception e) {
+//					e.printStackTrace();
+//				}
+//				//Log.i("TAG", "it was empty :( ");
+//			}
+
+		}
+
+
+
+		msgDialog = createAlertDialog("ZOMG!", "YOU TOOK A PICTURE!  WITH YOUR PHONE! HOLY CRAP!", "I KNOW RITE??!?");
+
+		/*
 			Yes, I know that throwing a simple alert dialog doesn't really do anything impressive.
 			If you wanna do something with the picture (save it, display it, shoot it to a web server, etc) then you can get the 
 			image data like this:
-			
+
 			Bitmap = getIntent().getExtras().get("data");
-			
+
 			Then do whatever you want with it.
-			
-			*/
-			
-		}
-		
+
+		 */
+
+
 		msgDialog.show();
 	}
-	
+
+	/*
+	public Bitmap getThumbnail(Uri uri) throws FileNotFoundException, IOException{
+        InputStream input = this.getContentResolver().openInputStream(uri);
+
+        BitmapFactory.Options onlyBoundsOptions = new BitmapFactory.Options();
+        onlyBoundsOptions.inJustDecodeBounds = true;
+        onlyBoundsOptions.inDither=true;//optional
+        onlyBoundsOptions.inPreferredConfig=Bitmap.Config.ARGB_8888;//optional
+        BitmapFactory.decodeStream(input, null, onlyBoundsOptions);
+        input.close();
+        if ((onlyBoundsOptions.outWidth == -1) || (onlyBoundsOptions.outHeight == -1))
+            return null;
+
+        int originalSize = (onlyBoundsOptions.outHeight > onlyBoundsOptions.outWidth) ? onlyBoundsOptions.outHeight : onlyBoundsOptions.outWidth;
+        double THUMBNAIL_SIZE = 1.0;
+        double ratio = (originalSize > THUMBNAIL_SIZE) ? (originalSize / THUMBNAIL_SIZE) : 1.0;
+
+        BitmapFactory.Options bitmapOptions = new BitmapFactory.Options();
+        bitmapOptions.inSampleSize = getPowerOfTwoForSampleRatio(ratio);
+        bitmapOptions.inDither=true;//optional
+        bitmapOptions.inPreferredConfig=Bitmap.Config.ARGB_8888;//optional
+        input = this.getContentResolver().openInputStream(uri);
+        Bitmap bitmap = BitmapFactory.decodeStream(input, null, bitmapOptions);
+        input.close();
+        return bitmap;
+    }
+
+    private static int getPowerOfTwoForSampleRatio(double ratio){
+        int k = Integer.highestOneBit((int)Math.floor(ratio));
+        if(k==0) return 1;
+        else return k;
+    }
+	 */
+
 	@SuppressWarnings("deprecation")
 	private AlertDialog createAlertDialog(String title, String msg, String buttonText){
 		AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
@@ -83,9 +179,9 @@ final int PICTURE_ACTIVITY = 1; // This is only really needed if you are catchin
 				return; // Nothing to see here...
 			}
 		});
-		
+
 		return msgDialog;
 	}
 
-	
+
 }

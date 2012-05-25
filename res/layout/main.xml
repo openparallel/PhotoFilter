@@ -4,7 +4,7 @@
     android:layout_height="fill_parent"
     android:orientation="vertical" >
 
-<TextView  
+	<TextView  
 	android:id="@+id/main_text_view"
     android:layout_width="fill_parent" 
     android:layout_height="wrap_content" 
@@ -18,4 +18,10 @@
 	android:layout_height="wrap_content"
 	android:text="@string/camera_button_text" 
 	android:textSize="@dimen/big_text"/>
+	
+	<ImageView android:id="@+id/imageView1" 
+	    android:layout_height="wrap_content" 
+	    android:src="@drawable/ic_launcher" 
+	    android:layout_width="wrap_content"/>
+	
 </LinearLayout>
