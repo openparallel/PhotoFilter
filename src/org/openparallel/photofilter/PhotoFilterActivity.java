@@ -3,6 +3,7 @@ package org.openparallel.photofilter;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,14 +13,17 @@ import org.openparallel.photofilter.R;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
 import android.graphics.Bitmap.Config;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Images.Media;
 import android.util.Log;
@@ -32,31 +36,47 @@ public class PhotoFilterActivity extends Activity {
 	/** Called when the activity is first created. */
 
 	static {
-		//System.loadLibrary("libjni_mosaic");
 		//System.loadLibrary("opencv");
 	}
 
+	public native byte[] findContours(int[] data, int w, int h);
+	
+	
+	//Image capture constants
 	final int PICTURE_ACTIVITY = 1000; // This is only really needed if you are catching the results of more than one activity.  It'll make sense later.
-
+	public static final String TEMP_PREFIX = "tmp_";
+	
+	//private variables needed for image capture
 	private ImageView imageView;
-
+	private Uri imageUri;
 	/* Override the onCreate method */
 	@Override
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState); // Blah blah blah call the super.
 		setContentView(R.layout.main); // It is VERY important that you do this FIRST.  If you don't, the next line will throw a null pointer exception.  And God will kill a kitten.
-
+		
 		final Button cameraButton = (Button)findViewById(R.id.camera_button); // Get a handle to the button so we can add a handler for the click event 
 		cameraButton.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v){
+
 				Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE); // Normally you would populate this with your custom intent.
+						
+				ContentValues values = new ContentValues();
+		        values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+		        imageUri = getContentResolver().insert(
+		                MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+				
+				cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+
 				startActivityForResult(cameraIntent, PICTURE_ACTIVITY); // This will cause the onActivityResult event to fire once it's done
+
 			}
 		});
 
 	}
+
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
@@ -74,49 +94,40 @@ public class PhotoFilterActivity extends Activity {
 		if (requestCode == PICTURE_ACTIVITY) { 
 			if(resultCode == RESULT_OK){
 
-				
-					
-					//initialise the imageview
-					this.imageView = (ImageView)this.findViewById(R.id.imageView1);
+				//initialise the imageview
+				this.imageView = (ImageView)this.findViewById(R.id.imageView1);
 
-					//load the image from camera and set it as the imageview
-					try{
+				//load the image from camera and set it as the imageview
+				try{
 					if(intent != null){
-						Bitmap photo = Media.getBitmap(this.getContentResolver(), intent.getData());	
-						//Bitmap photo =  (Bitmap) getIntent().getExtras().get("data");
+						//Bitmap photo = Media.getBitmap(this.getContentResolver(), intent.getData());	
+						Bitmap photo =  (Bitmap) getIntent().getExtras().get("data");
 						imageView.setImageBitmap(photo);
 						//photo.recycle();
 					}
 					else{
-						msgDialog = createAlertDialog(":(", "Bummer... the AVD or current device doesn't support camera capture", "OK!");
-					}
 						
-					}catch (Exception e) {
-						e.printStackTrace();
-						// TODO: handle exception
+						imageView.setImageURI(imageUri);
+						//msgDialog = createAlertDialog(":(", "Bummer... the AVD or current device doesn't support camera capture", "OK!");
+						//msgDialog.show();
 					}
-				
+
+				}catch (Exception e) {
+					e.printStackTrace();
+					// TODO: handle exception
+				}
+
 			}
 
 			if (resultCode == RESULT_CANCELED) { // The user didn't like the photo.  ;_;
 				msgDialog = createAlertDialog(":)", "You hit the cancel button... why not try again later!", "OK!");
 			}
 
-//			else{
-//				finish();
-//				try {
-//
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//				//Log.i("TAG", "it was empty :( ");
-//			}
-
 		}
 
 
 
-		msgDialog = createAlertDialog("ZOMG!", "YOU TOOK A PICTURE!  WITH YOUR PHONE! HOLY CRAP!", "I KNOW RITE??!?");
+		msgDialog = createAlertDialog(":)", "The Photo you have taken has been filtered", "Ok!");
 
 		/*
 			Yes, I know that throwing a simple alert dialog doesn't really do anything impressive.
