@@ -36,11 +36,12 @@ public class PhotoFilterActivity extends Activity {
 	/** Called when the activity is first created. */
 
 	static {
-		//System.loadLibrary("opencv");
+		System.loadLibrary("opencv");
 	}
 
-	public native byte[] findContours(int[] data, int w, int h);
-	
+	//public native byte[] findContours(int[] data, int w, int h);
+	public native byte[] getSourceImage();
+	public native boolean setSourceImage(int[] data, int w, int h);
 	
 	//Image capture constants
 	final int PICTURE_ACTIVITY = 1000; // This is only really needed if you are catching the results of more than one activity.  It'll make sense later.
@@ -107,7 +108,28 @@ public class PhotoFilterActivity extends Activity {
 					}
 					else{
 						
-						imageView.setImageURI(imageUri);
+						Bitmap photo = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
+						
+						int w = photo.getWidth();
+						int h = photo.getHeight();
+						int[] data = new int[w * h];
+						
+						setSourceImage(data, w, h);
+						
+						byte[] resultData = getSourceImage();
+						
+						//int w = bitmap.getWidth();
+		                //int h = bitmap.getHeight();
+		                //int[] pixels = new int[w * h];
+		                //bitmap.getPixels(pixels, 0, w, 0, 0, w, h);
+
+		                //byte[] data = findContours(pixels, w, h);
+		                //Bitmap faceDetectBitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+		                
+						
+						//imageView.setImageURI(imageUri);
+						imageView.setImageBitmap(photo);
+						
 						//msgDialog = createAlertDialog(":(", "Bummer... the AVD or current device doesn't support camera capture", "OK!");
 						//msgDialog.show();
 					}
