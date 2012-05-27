@@ -39,9 +39,11 @@ public class PhotoFilterActivity extends Activity {
 		System.loadLibrary("opencv");
 	}
 
+	//OpenCV JNI functions
 	//public native byte[] findContours(int[] data, int w, int h);
 	public native byte[] getSourceImage();
 	public native boolean setSourceImage(int[] data, int w, int h);
+	public native void doGrayscaleTransform();
 	
 	//Image capture constants
 	final int PICTURE_ACTIVITY = 1000; // This is only really needed if you are catching the results of more than one activity.  It'll make sense later.
@@ -119,12 +121,16 @@ public class PhotoFilterActivity extends Activity {
 						photo.getPixels(data, 0, w, 0, 0, w, h);
 						
 						//pass the pixels to OpenCV for later processing
-						boolean didSet = setSourceImage(data, w, h);
+						boolean didSet = this.setSourceImage(data, w, h);
 						
 						if(didSet){
+							
+							//process the data
+							this.doGrayscaleTransform();
+							
 							//collect the data back from openCV
 							Log.i("Captain's Log", "setting image was successful");
-							byte[] resultData = getSourceImage();
+							byte[] resultData = this.getSourceImage();
 							
 							//process the OpenCV returned data back into a usable bitmap and display it
 							Bitmap resultPhoto = BitmapFactory.decodeByteArray(resultData, 0, resultData.length);
@@ -132,7 +138,7 @@ public class PhotoFilterActivity extends Activity {
 						}else{
 							//could notify the user that opencv has a problem
 							Log.i("Captain's Log", "setting image was not very successful");
-							imageView.setImageBitmap(photo);
+							//imageView.setImageBitmap(photo);
 						}
 						
 						
