@@ -110,13 +110,31 @@ public class PhotoFilterActivity extends Activity {
 						
 						Bitmap photo = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
 						
+						//establish the parameters of the image and allocate space for it
 						int w = photo.getWidth();
 						int h = photo.getHeight();
 						int[] data = new int[w * h];
 						
-						setSourceImage(data, w, h);
+						//set the data with the pixels from the photo
+						photo.getPixels(data, 0, w, 0, 0, w, h);
 						
-						byte[] resultData = getSourceImage();
+						//pass the pixels to OpenCV for later processing
+						boolean didSet = setSourceImage(data, w, h);
+						
+						if(didSet){
+							//collect the data back from openCV
+							Log.i("Captain's Log", "setting image was successful");
+							byte[] resultData = getSourceImage();
+							
+							//process the OpenCV returned data back into a usable bitmap and display it
+							Bitmap resultPhoto = BitmapFactory.decodeByteArray(resultData, 0, resultData.length);
+							imageView.setImageBitmap(resultPhoto);
+						}else{
+							//could notify the user that opencv has a problem
+							Log.i("Captain's Log", "setting image was not very successful");
+							imageView.setImageBitmap(photo);
+						}
+						
 						
 						//int w = bitmap.getWidth();
 		                //int h = bitmap.getHeight();
@@ -128,7 +146,7 @@ public class PhotoFilterActivity extends Activity {
 		                
 						
 						//imageView.setImageURI(imageUri);
-						imageView.setImageBitmap(photo);
+						//imageView.setImageBitmap(photo);
 						
 						//msgDialog = createAlertDialog(":(", "Bummer... the AVD or current device doesn't support camera capture", "OK!");
 						//msgDialog.show();
