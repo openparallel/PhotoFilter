@@ -3,6 +3,7 @@
     package="org.openparallel.photofilter"
     android:versionCode="1"
     android:versionName="1.0">
+    
 
     <uses-sdk android:minSdkVersion="15" />
     
@@ -13,10 +14,13 @@
 	
     <application
         android:icon="@drawable/ic_launcher"
-        android:label="@string/app_name" >
+        android:label="@string/app_name" 
+        android:screenOrientation="portrait">
         <activity
             android:name=".PhotoFilterActivity"
-            android:label="@string/app_name" >
+            android:label="@string/app_name" 
+            android:screenOrientation="portrait">
+            
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

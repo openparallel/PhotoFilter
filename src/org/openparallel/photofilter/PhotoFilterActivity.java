@@ -4,9 +4,11 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 
 import org.openparallel.photofilter.R;
@@ -58,7 +60,7 @@ public class PhotoFilterActivity extends Activity {
 	{
 		super.onCreate(savedInstanceState); // Blah blah blah call the super.
 		setContentView(R.layout.main); // It is VERY important that you do this FIRST.  If you don't, the next line will throw a null pointer exception.  And God will kill a kitten.
-		
+				
 		final Button cameraButton = (Button)findViewById(R.id.camera_button); // Get a handle to the button so we can add a handler for the click event 
 		cameraButton.setOnClickListener(new OnClickListener() {
 			@Override
@@ -69,8 +71,11 @@ public class PhotoFilterActivity extends Activity {
 				ContentValues values = new ContentValues();
 		        values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
 		        imageUri = getContentResolver().insert(
-		                MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+		               MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
 				
+		        //Log.i("Captain's Log", "image Uri is " + imageUri);
+				
+		        
 				cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
 
 				startActivityForResult(cameraIntent, PICTURE_ACTIVITY); // This will cause the onActivityResult event to fire once it's done
@@ -102,16 +107,43 @@ public class PhotoFilterActivity extends Activity {
 
 				//load the image from camera and set it as the imageview
 				try{
-					if(intent != null){
+					/*
+					 //this is the old way but often the intent returns a NPE... bummer right?
+					 
+					 if(intent != null){
 						//Bitmap photo = Media.getBitmap(this.getContentResolver(), intent.getData());	
 						Bitmap photo =  (Bitmap) getIntent().getExtras().get("data");
 						imageView.setImageBitmap(photo);
-						//photo.recycle();
+						photo.recycle();
 					}
 					else{
+						Log.e("Captains Log", "The intent is nul");
+					}
+					
+					else{
+*/						
+
+					//try to collect the image the sophisticated way
+					Bitmap photo;	
+					BitmapFactory.Options options = new BitmapFactory.Options();
+						options.inTempStorage = new byte[16*1024];
+						options.inSampleSize = 6;
 						
-						Bitmap photo = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
-						
+						Cursor cursor = MediaStore.Images.Media.query(this.getContentResolver(), imageUri, null);
+
+						if( cursor != null && cursor.getCount() > 0 ) {
+							cursor.moveToFirst();
+							String path = cursor.getString( cursor.getColumnIndex( MediaStore.Images.Thumbnails.DATA ) );
+	
+	
+							photo = BitmapFactory.decodeFile(path, options);
+							imageView.setImageBitmap(photo);
+						}
+						else{
+							//if we can't save collect the image the sophisticated way the old school way; if that fails so be it
+							photo = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
+						}
+											
 						//establish the parameters of the image and allocate space for it
 						int w = photo.getWidth();
 						int h = photo.getHeight();
@@ -137,27 +169,13 @@ public class PhotoFilterActivity extends Activity {
 							imageView.setImageBitmap(resultPhoto);
 						}else{
 							//could notify the user that opencv has a problem
-							Log.i("Captain's Log", "setting image was not very successful");
-							//imageView.setImageBitmap(photo);
+							Log.i("Captain's Log", "setting image was not very successful... thanks OpenCV");
+							msgDialog = createAlertDialog(":(", "You should contact the developer... OpenCV Failed epically!", "OK!");
 						}
 						
 						
-						//int w = bitmap.getWidth();
-		                //int h = bitmap.getHeight();
-		                //int[] pixels = new int[w * h];
-		                //bitmap.getPixels(pixels, 0, w, 0, 0, w, h);
-
-		                //byte[] data = findContours(pixels, w, h);
-		                //Bitmap faceDetectBitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-		                
-						
-						//imageView.setImageURI(imageUri);
-						//imageView.setImageBitmap(photo);
-						
-						//msgDialog = createAlertDialog(":(", "Bummer... the AVD or current device doesn't support camera capture", "OK!");
-						//msgDialog.show();
-					}
-
+					
+//					}
 				}catch (Exception e) {
 					e.printStackTrace();
 					// TODO: handle exception
@@ -190,6 +208,34 @@ public class PhotoFilterActivity extends Activity {
 		msgDialog.show();
 	}
 
+	private Bitmap decodeFile(File f){
+	    Bitmap b = null;
+	    try {
+	    	int IMAGE_MAX_SIZE = 1024;
+	        //Decode image size
+	        BitmapFactory.Options o = new BitmapFactory.Options();
+	        o.inJustDecodeBounds = true;
+
+	        FileInputStream fis = new FileInputStream(f);
+	        BitmapFactory.decodeStream(fis, null, o);
+	        fis.close();
+
+	        int scale = 1;
+	        if (o.outHeight > IMAGE_MAX_SIZE || o.outWidth > IMAGE_MAX_SIZE) {
+	            scale = (int)Math.pow(2, (int) Math.round(Math.log(IMAGE_MAX_SIZE / (double) Math.max(o.outHeight, o.outWidth)) / Math.log(0.5)));
+	        }
+
+	        //Decode with inSampleSize
+	        BitmapFactory.Options o2 = new BitmapFactory.Options();
+	        o2.inSampleSize = scale;
+	        fis = new FileInputStream(f);
+	        b = BitmapFactory.decodeStream(fis, null, o2);
+	        fis.close();
+	    } catch (IOException e) {
+	    }
+	    return b;
+	}
+	
 	/*
 	public Bitmap getThumbnail(Uri uri) throws FileNotFoundException, IOException{
         InputStream input = this.getContentResolver().openInputStream(uri);
