@@ -10,12 +10,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.openparallel.photofilter.R;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
@@ -23,16 +26,28 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
 import android.graphics.Bitmap.Config;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.Canvas;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.hardware.Camera.CameraInfo;
+import android.hardware.Camera.PictureCallback;
+import android.hardware.Camera.ShutterCallback;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.MediaStore.Images;
 import android.provider.MediaStore.Images.Media;
 import android.util.Log;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.hardware.Camera;
 
 public class PhotoFilterActivity extends Activity {
 	/** Called when the activity is first created. */
@@ -54,6 +69,17 @@ public class PhotoFilterActivity extends Activity {
 	//private variables needed for image capture
 	private ImageView imageView;
 	private Uri imageUri;
+	
+	//these variables are used to determine the front or back camera
+	//a bit of a hack is used here by examining the higher resolution
+	//of the back camera
+	private int backCameraPhotoWidth = -10000;
+	private int backCameraPhotoHeight = -10000;
+	private int frontCameraPhotoWidth = 10000;
+	private int frontCameraPhotoHeight = 10000;
+	
+	
+	
 	/* Override the onCreate method */
 	@Override
 	public void onCreate(Bundle savedInstanceState)
@@ -61,6 +87,9 @@ public class PhotoFilterActivity extends Activity {
 		super.onCreate(savedInstanceState); // Blah blah blah call the super.
 		setContentView(R.layout.main); // It is VERY important that you do this FIRST.  If you don't, the next line will throw a null pointer exception.  And God will kill a kitten.
 				
+		this.WorkoutCameraResolutions();
+		this.LogCameraResolutions();
+		
 		final Button cameraButton = (Button)findViewById(R.id.camera_button); // Get a handle to the button so we can add a handler for the click event 
 		cameraButton.setOnClickListener(new OnClickListener() {
 			@Override
@@ -122,12 +151,12 @@ public class PhotoFilterActivity extends Activity {
 					
 					else{
 */						
-
+					
 					//try to collect the image the sophisticated way
 					Bitmap photo;	
 					BitmapFactory.Options options = new BitmapFactory.Options();
 						options.inTempStorage = new byte[16*1024];
-						options.inSampleSize = 6;
+						options.inSampleSize = 2;
 						
 						Cursor cursor = MediaStore.Images.Media.query(this.getContentResolver(), imageUri, null);
 
@@ -137,7 +166,72 @@ public class PhotoFilterActivity extends Activity {
 	
 	
 							photo = BitmapFactory.decodeFile(path, options);
-							imageView.setImageBitmap(photo);
+							
+							
+							//now we have the image rotate accordingly
+							//figure out which camera was used depending on the image dimensions
+							
+							Log.i("Captain's Log", "Camera uses  width -> "+ photo.getWidth() +" height -> " + photo.getHeight());
+							
+							
+							int width = photo.getWidth();
+							int height = photo.getHeight();
+							
+							boolean frontCamera;
+							
+							//this is the image case when 
+							//	options.inSampleSize = 6;
+//							backCameraPhotoHeight = 612;
+//							backCameraPhotoWidth = 816;
+//							frontCameraPhotoHeight = 240;
+//							frontCameraPhotoWidth = 320;
+//							
+							//back crappy from camera for the Samsung Galaxy S III
+							if(width == frontCameraPhotoWidth && height == frontCameraPhotoHeight){ //its the front faceing camera
+								frontCamera = true;	
+							}
+//							else if(width == backCameraPhotoWidth && height == backCameraPhotoHeight){
+//								frontCamera = false;
+//							}
+							else{
+								frontCamera = false;
+								// quit early as this clearly isn't on the Samsung Galaxy S III
+								//Log.e("Captain's Log", "The test device isn't a Samsung Galaxy S III");
+								//return;
+							}
+							
+						    
+							int rotationInDegrees = 0;
+							
+							//set the rotation aspect according to which camera is used :)
+							if (frontCamera){
+								rotationInDegrees = 270;
+								Log.i("Captain's Log", "Front Camera Was Used -> rotation "+ rotationInDegrees +" degrees ");
+
+							}
+							else {
+								rotationInDegrees = 90;
+								Log.i("Captain's Log", "Back Camera Was Used -> rotation "+ rotationInDegrees +" degrees ");
+
+							}
+						
+					        // createa matrix for the manipulation
+					        Matrix matrix = new Matrix();
+					        // resize the bit map
+					        //matrix.postScale(scaleWidth, scaleHeight);
+					        // rotate the Bitmap
+					        matrix.postRotate(rotationInDegrees);
+					       
+					        // recreate the new Bitmap
+					        Bitmap resizedBitmap = Bitmap.createBitmap(photo, 0, 0,
+					        		photo.getWidth(), photo.getHeight(), matrix, true);
+
+					        // make a Drawable from Bitmap to allow to set the BitMap
+					        // to the ImageView, ImageButton or what ever
+					        
+							
+							imageView.setImageBitmap(resizedBitmap);
+							return;
 						}
 						else{
 							//if we can't save collect the image the sophisticated way the old school way; if that fails so be it
@@ -166,6 +260,7 @@ public class PhotoFilterActivity extends Activity {
 							
 							//process the OpenCV returned data back into a usable bitmap and display it
 							Bitmap resultPhoto = BitmapFactory.decodeByteArray(resultData, 0, resultData.length);
+							
 							imageView.setImageBitmap(resultPhoto);
 						}else{
 							//could notify the user that opencv has a problem
@@ -193,82 +288,9 @@ public class PhotoFilterActivity extends Activity {
 
 		msgDialog = createAlertDialog(":)", "The Photo you have taken has been filtered", "Ok!");
 
-		/*
-			Yes, I know that throwing a simple alert dialog doesn't really do anything impressive.
-			If you wanna do something with the picture (save it, display it, shoot it to a web server, etc) then you can get the 
-			image data like this:
-
-			Bitmap = getIntent().getExtras().get("data");
-
-			Then do whatever you want with it.
-
-		 */
-
 
 		msgDialog.show();
 	}
-
-	private Bitmap decodeFile(File f){
-	    Bitmap b = null;
-	    try {
-	    	int IMAGE_MAX_SIZE = 1024;
-	        //Decode image size
-	        BitmapFactory.Options o = new BitmapFactory.Options();
-	        o.inJustDecodeBounds = true;
-
-	        FileInputStream fis = new FileInputStream(f);
-	        BitmapFactory.decodeStream(fis, null, o);
-	        fis.close();
-
-	        int scale = 1;
-	        if (o.outHeight > IMAGE_MAX_SIZE || o.outWidth > IMAGE_MAX_SIZE) {
-	            scale = (int)Math.pow(2, (int) Math.round(Math.log(IMAGE_MAX_SIZE / (double) Math.max(o.outHeight, o.outWidth)) / Math.log(0.5)));
-	        }
-
-	        //Decode with inSampleSize
-	        BitmapFactory.Options o2 = new BitmapFactory.Options();
-	        o2.inSampleSize = scale;
-	        fis = new FileInputStream(f);
-	        b = BitmapFactory.decodeStream(fis, null, o2);
-	        fis.close();
-	    } catch (IOException e) {
-	    }
-	    return b;
-	}
-	
-	/*
-	public Bitmap getThumbnail(Uri uri) throws FileNotFoundException, IOException{
-        InputStream input = this.getContentResolver().openInputStream(uri);
-
-        BitmapFactory.Options onlyBoundsOptions = new BitmapFactory.Options();
-        onlyBoundsOptions.inJustDecodeBounds = true;
-        onlyBoundsOptions.inDither=true;//optional
-        onlyBoundsOptions.inPreferredConfig=Bitmap.Config.ARGB_8888;//optional
-        BitmapFactory.decodeStream(input, null, onlyBoundsOptions);
-        input.close();
-        if ((onlyBoundsOptions.outWidth == -1) || (onlyBoundsOptions.outHeight == -1))
-            return null;
-
-        int originalSize = (onlyBoundsOptions.outHeight > onlyBoundsOptions.outWidth) ? onlyBoundsOptions.outHeight : onlyBoundsOptions.outWidth;
-        double THUMBNAIL_SIZE = 1.0;
-        double ratio = (originalSize > THUMBNAIL_SIZE) ? (originalSize / THUMBNAIL_SIZE) : 1.0;
-
-        BitmapFactory.Options bitmapOptions = new BitmapFactory.Options();
-        bitmapOptions.inSampleSize = getPowerOfTwoForSampleRatio(ratio);
-        bitmapOptions.inDither=true;//optional
-        bitmapOptions.inPreferredConfig=Bitmap.Config.ARGB_8888;//optional
-        input = this.getContentResolver().openInputStream(uri);
-        Bitmap bitmap = BitmapFactory.decodeStream(input, null, bitmapOptions);
-        input.close();
-        return bitmap;
-    }
-
-    private static int getPowerOfTwoForSampleRatio(double ratio){
-        int k = Integer.highestOneBit((int)Math.floor(ratio));
-        if(k==0) return 1;
-        else return k;
-    }
-	 */
 
 	@SuppressWarnings("deprecation")
 	private AlertDialog createAlertDialog(String title, String msg, String buttonText){
@@ -286,5 +308,84 @@ public class PhotoFilterActivity extends Activity {
 		return msgDialog;
 	}
 
+	private void WorkoutCameraResolutions(){
+		
+		Log.i("Captain's Log", "Determining the resolutions of both cameras");
+		
+		int cameraCount = 0;
+	    Camera cam = null;
+	    Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
+	    cameraCount = Camera.getNumberOfCameras();
+	    
+	    Log.i("Captain's Log", "There are " + cameraCount + " cameras");
+		
+	    for ( int camIdx = 0; camIdx < cameraCount; camIdx++ ) {
+	        Camera.getCameraInfo( camIdx, cameraInfo );
+	        //if ( cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT  ) {
+	            try {
+	                cam = Camera.open( camIdx );
+	                Log.i("Captain's Log", "camera opened");
+	                if(cam!=null){
+	                    try{
+	                    	
+//	                    	List<Camera.Size> listSupportedPictureSizes = cam.getParameters().getSupportedPictureSizes();
+//
+//	                    	for (int i=0; i < listSupportedPictureSizes.size(); i++){
+//
+//	                            String str = String.valueOf(i) + " : " 
+//	                               + String.valueOf(listSupportedPictureSizes.get(i).height)
+//	                               + " x "
+//	                               + String.valueOf(listSupportedPictureSizes.get(i).width);
+//	                            Log.i("Captain's Log", str);
+//	                    	}
+	                    	 
+	                    	int thisWidth = cam.getParameters().getPictureSize().width;
+	                 	   int thisHeight = cam.getParameters().getPictureSize().height;
+	                 	   
+	                 	   if(thisWidth < frontCameraPhotoWidth){
+	                 		   frontCameraPhotoWidth = thisWidth;
+	                 	   }
+	                 	   if(thisWidth > backCameraPhotoWidth){
+	                 		   backCameraPhotoWidth = thisWidth;
+	                 	   }
+	                 	   
+	                 	   if(thisHeight < frontCameraPhotoHeight){
+	                 		   frontCameraPhotoHeight = thisHeight;
+	                 	   }
+	                 	   if(thisHeight > backCameraPhotoHeight){
+	                 		   backCameraPhotoHeight = thisHeight;
+	                 	   }
+	                 	   
+	                        
+	                        Log.i("Captain's Log", "photo taken!");
+	                    }catch (Exception e) {
+							// TODO: handle exception
+						}   
+	                    finally{
+	                    	cam.release();
+	                    }   
 
+	                  }else{
+	                	  Log.e("Captain's Log", "Workout Camera Resolutions Failed :(");
+	                    //booo, failed!
+	                  }
+
+	                
+	                
+	            } catch (RuntimeException e) {
+	                Log.e("Captain's Log", "Camera failed to open: " + e.getLocalizedMessage());
+	            }
+	        }
+	    //}
+	    
+	}
+	
+	 
+	 private void LogCameraResolutions(){
+		 Log.i("Captain's Log", "The Back Camera has photo width -> " + backCameraPhotoWidth + " height -> " + backCameraPhotoHeight);
+		 Log.i("Captain's Log", "The Front Camera has photo width -> " + frontCameraPhotoWidth + " height -> " + frontCameraPhotoHeight);
+	 }
+
+
+	
 }

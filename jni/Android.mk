@@ -267,7 +267,7 @@ LOCAL_LDLIBS := -L$(SYSROOT)/usr/lib -ldl -llog \
 
 LOCAL_SRC_FILES := \
         WLNonFileByteStream.cpp \
-        cvjni.cpp
+        FaceDetection.cpp
 
 
 LOCAL_STATIC_LIBRARIES := cxcore cv cvaux cvml cvhighgui

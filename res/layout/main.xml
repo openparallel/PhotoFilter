@@ -20,8 +20,8 @@
 	android:textSize="@dimen/big_text"/>
 	
 	<ImageView android:id="@+id/imageView1" 
-	    android:layout_height="wrap_content" 
+	    android:layout_height="fill_parent" 
 	    android:src="@drawable/ic_launcher" 
-	    android:layout_width="wrap_content"/>
+	    android:layout_width="fill_parent"/>
 	
 </LinearLayout>
