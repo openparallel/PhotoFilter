@@ -61,6 +61,7 @@ public class PhotoFilterActivity extends Activity {
 	public native byte[] getSourceImage();
 	public native boolean setSourceImage(int[] data, int w, int h);
 	public native void doGrayscaleTransform();
+	public native void doChainOfImageProcessingOperations();
 	
 	//Image capture constants
 	final int PICTURE_ACTIVITY = 1000; // This is only really needed if you are catching the results of more than one activity.  It'll make sense later.
@@ -230,8 +231,16 @@ public class PhotoFilterActivity extends Activity {
 					        // to the ImageView, ImageButton or what ever
 					        
 							
-							imageView.setImageBitmap(resizedBitmap);
-							return;
+							//imageView.setImageBitmap(resizedBitmap);
+							//return;
+					        
+					        //photo is passed as the image to filter, so set it
+					        photo = resizedBitmap;
+					        
+					        //and clear the temp variable resizedBitmap
+					        resizedBitmap = null;
+					        System.gc();
+					        
 						}
 						else{
 							//if we can't save collect the image the sophisticated way the old school way; if that fails so be it
@@ -252,7 +261,8 @@ public class PhotoFilterActivity extends Activity {
 						if(didSet){
 							
 							//process the data
-							this.doGrayscaleTransform();
+							//this.doGrayscaleTransform();
+							this.doChainOfImageProcessingOperations();
 							
 							//collect the data back from openCV
 							Log.i("Captain's Log", "setting image was successful");
