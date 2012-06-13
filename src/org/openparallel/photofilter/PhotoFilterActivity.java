@@ -6,21 +6,30 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ResourceBundle;
 
 import org.openparallel.photofilter.R;
+
+import android.R.string;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ContentProvider;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.AssetFileDescriptor;
+import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
@@ -62,6 +71,7 @@ public class PhotoFilterActivity extends Activity {
 	public native boolean setSourceImage(int[] data, int w, int h);
 	public native void doGrayscaleTransform();
 	public native void doChainOfImageProcessingOperations();
+	public native void setWorkingDir(String string);
 	
 	//Image capture constants
 	final int PICTURE_ACTIVITY = 1000; // This is only really needed if you are catching the results of more than one activity.  It'll make sense later.
@@ -262,6 +272,60 @@ public class PhotoFilterActivity extends Activity {
 							
 							//process the data
 							//this.doGrayscaleTransform();
+							
+//							File f = this.getApplicationContext().getFilesDir(); 
+							
+							//String[] fl = getAssets().list("");
+							
+//							File[] fl = f.listFiles();
+							//fl = fl[0].listFiles();
+														
+							//String[] fl = f.list();
+							
+//							Log.i("Captain's Log", "ls:");
+							//list all files
+//							for(int i = 0; i < fl.length; i ++){
+//								Log.i("Captain's Log", fl[i].getName());
+//								//Log.i("Captain's Log", fl[i]);
+//							}
+							
+							//Log.i("Captain's Log", "");
+							//Log.i("Captain's Log", f.getAbsolutePath());
+							
+							//this.setWorkingDir(f.toString());
+							
+							
+							AssetManager am = getResources().getAssets();
+						    String assets[] = null;
+						    
+						    
+							Log.i("Captain's Log", "ls:");
+
+							File directory = new File(Environment.getExternalStorageDirectory()+File.separator+"haarCascadeClassifiers");
+							directory.mkdirs();
+							
+						    try {
+						        assets = am.list( "haarCascadeClassifiers" );
+						        
+						        for( int i = 0 ; i < assets.length ; ++i ) {
+						            Log.i("Captain's Log",assets[i]);
+						            InputStream tmp = am.open("haarCascadeClassifiers/" + assets[i]);
+						            if(tmp == null){
+						            	Log.e("Captain's Log", "xml " + assets[i] + " not open!");
+						            }
+						            writeInputStreamToFile(tmp, File.separator + "haarCascadeClassifiers" + File.separator + assets[i]);
+						        }
+						    } catch( IOException ex ) {
+						        Log.e( "Captain's Log", 
+						                "I/O Exception",
+						                ex );
+						    }
+						    
+						    Log.i("Captain's Log", "The files have been written to " + Environment.getExternalStorageDirectory().getPath());
+						    //should only set this and the pull from assets and write to disk once!
+							//this.setWorkingDir(Environment.getExternalStorageDirectory().getPath() + File.separator);
+							this.setWorkingDir(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator);
+							
 							this.doChainOfImageProcessingOperations();
 							
 							//collect the data back from openCV
@@ -301,7 +365,50 @@ public class PhotoFilterActivity extends Activity {
 
 		msgDialog.show();
 	}
+	
 
+	private void writeInputStreamToFile(InputStream is, String file){
+		try {
+			 
+            //InputStream is = null; // Your stream here (myInputStream)
+
+   
+
+            File root = Environment.getExternalStorageDirectory();
+
+            String localFilePath = root.getPath() + file;
+
+           
+
+            FileOutputStream fos = new FileOutputStream(localFilePath, false);
+
+            OutputStream os = new BufferedOutputStream(fos);
+
+           
+
+            byte[] buffer = new byte[1024];
+
+            int byteRead = 0;
+
+           
+
+            while ((byteRead = is.read(buffer)) != -1) {
+
+                    os.write(buffer, 0, byteRead);
+
+            }
+
+            fos.close();
+
+    } catch (Exception e) {
+
+            e.printStackTrace();
+
+    }
+
+
+	}
+	
 	@SuppressWarnings("deprecation")
 	private AlertDialog createAlertDialog(String title, String msg, String buttonText){
 		AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
@@ -350,21 +457,21 @@ public class PhotoFilterActivity extends Activity {
 //	                    	}
 	                    	 
 	                    	int thisWidth = cam.getParameters().getPictureSize().width;
-	                 	   int thisHeight = cam.getParameters().getPictureSize().height;
+	                 	   	int thisHeight = cam.getParameters().getPictureSize().height;
 	                 	   
-	                 	   if(thisWidth < frontCameraPhotoWidth){
+	                 	   	if(thisWidth < frontCameraPhotoWidth){
 	                 		   frontCameraPhotoWidth = thisWidth;
-	                 	   }
-	                 	   if(thisWidth > backCameraPhotoWidth){
+	                 	   	}
+	                 	   	if(thisWidth > backCameraPhotoWidth){
 	                 		   backCameraPhotoWidth = thisWidth;
-	                 	   }
+	                 	   	}
 	                 	   
-	                 	   if(thisHeight < frontCameraPhotoHeight){
+	                 	   	if(thisHeight < frontCameraPhotoHeight){
 	                 		   frontCameraPhotoHeight = thisHeight;
-	                 	   }
-	                 	   if(thisHeight > backCameraPhotoHeight){
+	                 	   	}
+	                 	   	if(thisHeight > backCameraPhotoHeight){
 	                 		   backCameraPhotoHeight = thisHeight;
-	                 	   }
+	                 	   	}
 	                 	   
 	                        
 	                        Log.i("Captain's Log", "photo taken!");
