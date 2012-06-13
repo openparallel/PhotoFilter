@@ -382,7 +382,6 @@ public class PhotoFilterActivity extends Activity {
 
             FileOutputStream fos = new FileOutputStream(localFilePath, false);
 
-            OutputStream os = new BufferedOutputStream(fos);
 
            
 
@@ -394,7 +393,7 @@ public class PhotoFilterActivity extends Activity {
 
             while ((byteRead = is.read(buffer)) != -1) {
 
-                    os.write(buffer, 0, byteRead);
+                    fos.write(buffer, 0, byteRead);
 
             }
 
