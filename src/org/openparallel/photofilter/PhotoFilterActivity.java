@@ -1,57 +1,26 @@
 package org.openparallel.photofilter;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ResourceBundle;
-
 import org.openparallel.photofilter.R;
 
-import android.R.string;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ContentProvider;
-import android.content.ContentResolver;
 import android.content.ContentValues;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
-import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
-import android.graphics.Bitmap.Config;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.Canvas;
 import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.RectF;
-import android.hardware.Camera.CameraInfo;
-import android.hardware.Camera.PictureCallback;
-import android.hardware.Camera.ShutterCallback;
-import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.provider.MediaStore.Images;
-import android.provider.MediaStore.Images.Media;
 import android.util.Log;
-import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -70,7 +39,7 @@ public class PhotoFilterActivity extends Activity {
 	public native byte[] getSourceImage();
 	public native boolean setSourceImage(int[] data, int w, int h);
 	public native void doGrayscaleTransform();
-	public native void doChainOfImageProcessingOperations();
+	public native boolean doChainOfImageProcessingOperations();
 	public native void setWorkingDir(String string);
 	
 	//Image capture constants
@@ -98,9 +67,14 @@ public class PhotoFilterActivity extends Activity {
 		super.onCreate(savedInstanceState); // Blah blah blah call the super.
 		setContentView(R.layout.main); // It is VERY important that you do this FIRST.  If you don't, the next line will throw a null pointer exception.  And God will kill a kitten.
 				
+		//determine camera rotations on startup (this is dependent on what camera on device is used)
 		this.WorkoutCameraResolutions();
 		this.LogCameraResolutions();
 		
+		//load and store the haar cascades to local disk (this is used for feature detection on the NDK)
+		this.LoadHaarWaveletFiltersToLocalStorage();
+		
+		//rig up a camera button to collect images and to run the bulk of the app when a good photo is taken
 		final Button cameraButton = (Button)findViewById(R.id.camera_button); // Get a handle to the button so we can add a handler for the click event 
 		cameraButton.setOnClickListener(new OnClickListener() {
 			@Override
@@ -112,9 +86,7 @@ public class PhotoFilterActivity extends Activity {
 		        values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
 		        imageUri = getContentResolver().insert(
 		               MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-				
-		        //Log.i("Captain's Log", "image Uri is " + imageUri);
-				
+								
 		        
 				cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
 
@@ -254,6 +226,7 @@ public class PhotoFilterActivity extends Activity {
 						}
 						else{
 							//if we can't save collect the image the sophisticated way the old school way; if that fails so be it
+							Log.v("Captain's Log", "The old photo capture is being used");
 							photo = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
 						}
 											
@@ -268,65 +241,19 @@ public class PhotoFilterActivity extends Activity {
 						//pass the pixels to OpenCV for later processing
 						boolean didSet = this.setSourceImage(data, w, h);
 						
+						Log.i("Captain's Log", "Image Passed into the NDK");
+						
 						if(didSet){
 							
 							//process the data
 							//this.doGrayscaleTransform();
 							
-//							File f = this.getApplicationContext().getFilesDir(); 
+							//maybe check that this.LoadHaarWaveletFiltersToLocalStorage(); still has local haar cascades... if not maybe run it again?
 							
-							//String[] fl = getAssets().list("");
-							
-//							File[] fl = f.listFiles();
-							//fl = fl[0].listFiles();
-														
-							//String[] fl = f.list();
-							
-//							Log.i("Captain's Log", "ls:");
-							//list all files
-//							for(int i = 0; i < fl.length; i ++){
-//								Log.i("Captain's Log", fl[i].getName());
-//								//Log.i("Captain's Log", fl[i]);
-//							}
-							
-							//Log.i("Captain's Log", "");
-							//Log.i("Captain's Log", f.getAbsolutePath());
-							
-							//this.setWorkingDir(f.toString());
-							
-							
-							AssetManager am = getResources().getAssets();
-						    String assets[] = null;
-						    
-						    
-							Log.i("Captain's Log", "ls:");
-
-							File directory = new File(Environment.getExternalStorageDirectory()+File.separator+"haarCascadeClassifiers");
-							directory.mkdirs();
-							
-						    try {
-						        assets = am.list( "haarCascadeClassifiers" );
-						        
-						        for( int i = 0 ; i < assets.length ; ++i ) {
-						            Log.i("Captain's Log",assets[i]);
-						            InputStream tmp = am.open("haarCascadeClassifiers/" + assets[i]);
-						            if(tmp == null){
-						            	Log.e("Captain's Log", "xml " + assets[i] + " not open!");
-						            }
-						            writeInputStreamToFile(tmp, File.separator + "haarCascadeClassifiers" + File.separator + assets[i]);
-						        }
-						    } catch( IOException ex ) {
-						        Log.e( "Captain's Log", 
-						                "I/O Exception",
-						                ex );
-						    }
-						    
-						    Log.i("Captain's Log", "The files have been written to " + Environment.getExternalStorageDirectory().getPath());
-						    //should only set this and the pull from assets and write to disk once!
-							//this.setWorkingDir(Environment.getExternalStorageDirectory().getPath() + File.separator);
-							this.setWorkingDir(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator);
-							
-							this.doChainOfImageProcessingOperations();
+							boolean didDoChainOfImageProcessingOperations = this.doChainOfImageProcessingOperations();
+							if (!didDoChainOfImageProcessingOperations){
+								Log.e("Captain's Log", "Applying the chain of Image Processing Operations Failed");
+							}
 							
 							//collect the data back from openCV
 							Log.i("Captain's Log", "setting image was successful");
@@ -502,6 +429,39 @@ public class PhotoFilterActivity extends Activity {
 		 Log.i("Captain's Log", "The Front Camera has photo width -> " + frontCameraPhotoWidth + " height -> " + frontCameraPhotoHeight);
 	 }
 
+	 private void LoadHaarWaveletFiltersToLocalStorage(){
+		 AssetManager am = getResources().getAssets();
+		    String assets[] = null;
+		    
+		    
+			Log.i("Captain's Log", "ls:");
+
+			File directory = new File(Environment.getExternalStorageDirectory()+File.separator+"haarCascadeClassifiers");
+			directory.mkdirs();
+			
+		    try {
+		        assets = am.list( "haarCascadeClassifiers" );
+		        
+		        for( int i = 0 ; i < assets.length ; ++i ) {
+		            Log.i("Captain's Log",assets[i]);
+		            InputStream tmp = am.open("haarCascadeClassifiers/" + assets[i]);
+		            if(tmp == null){
+		            	Log.e("Captain's Log", "xml " + assets[i] + " not open!");
+		            }
+		            writeInputStreamToFile(tmp, File.separator + "haarCascadeClassifiers" + File.separator + assets[i]);
+		        }
+		    } catch( IOException ex ) {
+		        Log.e( "Captain's Log", 
+		                "I/O Exception",
+		                ex );
+		    }
+		    
+		    Log.i("Captain's Log", "The cascade files have been written to " + Environment.getExternalStorageDirectory().getPath());
+		    //should only set this and the pull from assets and write to disk once!
+			//this.setWorkingDir(Environment.getExternalStorageDirectory().getPath() + File.separator);
+			this.setWorkingDir(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator);
+			
+	 }
 
 	
 }
