@@ -41,6 +41,7 @@ public class PhotoFilterActivity extends Activity {
 	public native void doGrayscaleTransform();
 	public native boolean doChainOfImageProcessingOperations();
 	public native void setWorkingDir(String string);
+	public native boolean imageProcessingHasFinished();
 	
 	//Image capture constants
 	final int PICTURE_ACTIVITY = 1000; // This is only really needed if you are catching the results of more than one activity.  It'll make sense later.
@@ -251,9 +252,17 @@ public class PhotoFilterActivity extends Activity {
 							//maybe check that this.LoadHaarWaveletFiltersToLocalStorage(); still has local haar cascades... if not maybe run it again?
 							
 							boolean didDoChainOfImageProcessingOperations = this.doChainOfImageProcessingOperations();
+							
+							//if the NDK hasn't finished why should you progress?
+							while (!this.imageProcessingHasFinished()){
+								wait(100);
+							}
+							
 							if (!didDoChainOfImageProcessingOperations){
 								Log.e("Captain's Log", "Applying the chain of Image Processing Operations Failed");
 							}
+							
+							
 							
 							//collect the data back from openCV
 							Log.i("Captain's Log", "setting image was successful");
