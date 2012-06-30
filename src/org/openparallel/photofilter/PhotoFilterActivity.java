@@ -74,6 +74,8 @@ public class PhotoFilterActivity extends Activity {
 		
 		//load and store the haar cascades to local disk (this is used for feature detection on the NDK)
 		this.LoadHaarWaveletFiltersToLocalStorage();
+		this.LoadHatsToLocalStorage();
+		this.LoadMoesToLocalStorage();
 		
 		//rig up a camera button to collect images and to run the bulk of the app when a good photo is taken
 		final Button cameraButton = (Button)findViewById(R.id.camera_button); // Get a handle to the button so we can add a handler for the click event 
@@ -99,6 +101,20 @@ public class PhotoFilterActivity extends Activity {
 	}
 
 
+	@Override
+	protected void onDestroy(){
+		super.onDestroy();
+		//cleanup after yourself by removing all those resources placed on the SD
+		File directory = new File(Environment.getExternalStorageDirectory()+File.separator+"hatResources");
+		DeleteRecursive(directory);
+		
+		directory = new File(Environment.getExternalStorageDirectory()+File.separator+"moeResources");
+		DeleteRecursive(directory);
+		
+		directory = new File(Environment.getExternalStorageDirectory()+File.separator+"haarCascadeClassifiers");
+		DeleteRecursive(directory);
+	}
+	
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
 		super.onActivityResult(requestCode, resultCode, intent);
@@ -471,6 +487,102 @@ public class PhotoFilterActivity extends Activity {
 			this.setWorkingDir(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator);
 			
 	 }
+	 
+	 private void LoadMoesToLocalStorage(){
+		 AssetManager am = getResources().getAssets();
+		    String assets[] = null;
+		    
+		    
+			Log.i("Captain's Log", "ls:");
 
-	
+			File directory = new File(Environment.getExternalStorageDirectory()+File.separator+"moeResources");
+			directory.mkdirs();
+			
+		    try {
+		        assets = am.list( "moeResources" );
+		        
+		        for( int i = 0 ; i < assets.length ; ++i ) {
+		            Log.i("Captain's Log",assets[i]);
+		            InputStream tmp = am.open("moeResources/" + assets[i]);
+		            if(tmp == null){
+		            	Log.e("Captain's Log", "xml " + assets[i] + " not open!");
+		            }
+		            writeInputStreamToFile(tmp, File.separator + "moeResources" + File.separator + assets[i]);
+		        }
+		    } catch( IOException ex ) {
+		        Log.e( "Captain's Log", 
+		                "I/O Exception",
+		                ex );
+		    }
+		    
+		    Log.i("Captain's Log", "The cascade files have been written to " + Environment.getExternalStorageDirectory().getPath());
+		    //should only set this and the pull from assets and write to disk once!
+			//this.setWorkingDir(Environment.getExternalStorageDirectory().getPath() + File.separator);
+			this.setWorkingDir(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator);
+			
+	 }
+	 
+	 private void LoadHatsToLocalStorage(){
+		 AssetManager am = getResources().getAssets();
+		    String assets[] = null;
+		    
+		    
+			Log.i("Captain's Log", "ls:");
+
+			File directory = new File(Environment.getExternalStorageDirectory()+File.separator+"hatResources");
+			directory.mkdirs();
+			
+		    try {
+		        assets = am.list( "hatResources" );
+		        
+		        for( int i = 0 ; i < assets.length ; ++i ) {
+		            Log.i("Captain's Log",assets[i]);
+		            InputStream tmp = am.open("hatResources/" + assets[i]);
+		            if(tmp == null){
+		            	Log.e("Captain's Log", "xml " + assets[i] + " not open!");
+		            }
+		            writeInputStreamToFile(tmp, File.separator + "hatResources" + File.separator + assets[i]);
+		        }
+		    } catch( IOException ex ) {
+		        Log.e( "Captain's Log", 
+		                "I/O Exception",
+		                ex );
+		    }
+		    
+		    Log.i("Captain's Log", "The cascade files have been written to " + Environment.getExternalStorageDirectory().getPath());
+		    //should only set this and the pull from assets and write to disk once!
+			//this.setWorkingDir(Environment.getExternalStorageDirectory().getPath() + File.separator);
+			this.setWorkingDir(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator);
+			
+	 }
+
+	 void DeleteRecursive(File dir)
+	    {
+	        Log.d("DeleteRecursive", "DELETEPREVIOUS TOP" + dir.getPath());
+	        if (dir.isDirectory())
+	        {
+	            String[] children = dir.list();
+	            for (int i = 0; i < children.length; i++) 
+	            {
+	               File temp =  new File(dir, children[i]);
+	               if(temp.isDirectory())
+	               {
+	                   Log.d("DeleteRecursive", "Recursive Call" + temp.getPath());
+	                   DeleteRecursive(temp);
+	               }
+	               else
+	               {
+	                   Log.d("DeleteRecursive", "Delete File" + temp.getPath());
+	                   boolean b = temp.delete();
+	                   if(b == false)
+	                   {
+	                       Log.d("DeleteRecursive", "DELETE FAIL");
+	                   }
+	               }
+	            }
+
+	            dir.delete();
+	        }
+	    }
+	 
 }
