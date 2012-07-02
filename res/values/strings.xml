@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">PhotoFilter</string>
+    <string name="app_name">Ne10BoostedImageThresh</string>
    	<string name="main_text_view_string">Click the button below to take a picture</string>
 	<string name="camera_button_text">Take Photo!</string>
 	
